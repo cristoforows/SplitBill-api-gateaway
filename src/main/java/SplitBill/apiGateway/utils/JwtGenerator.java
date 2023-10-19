@@ -13,9 +13,6 @@ import java.time.Instant;
 
 public class JwtGenerator {
 
-  public JwtGenerator() {
-  }
-
   public enum JwtType {
     INITIAL,
     ACCESS,
