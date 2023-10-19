@@ -1,4 +1,4 @@
-= Splitbillapigateaway
+= Splitbillapigateway
 
 image:https://img.shields.io/badge/vert.x-4.4.5-purple.svg[link="https://vertx.io"]
 

@@ -9,26 +9,31 @@ import SplitBill.apiGateway.utils.JwtGenerator;
 
 public class MainVerticle extends AbstractVerticle {
   @Override
-  public void start() throws Exception {
+  public void start() {
     vertx.deployVerticle(new SignInVerticle());
     // Create a Router
     Router router = Router.router(vertx);
 
-    router.post("api/v1/auth").consumes("application/json")
+    router.post("/api/v1/auth").consumes("application/json")
       .handler(BodyHandler.create())
-      .handler(this::AuthHandler);  // accept Google ID Token and platform OS
+      .handler(this::GAuthHandler);  // accept Google ID Token and platform OS
 
-    router.post("api/v1/signUp").consumes("application/json")
+    router.post("/api/v1/signUp").consumes("application/json")
       .handler(BodyHandler.create())
       .handler(this::FormAuthHandler)
       .handler(this::OTPHandler)
       .handler(this::SignUpHandler);  // sign up
 
-    router.post("api/v1/signIn").consumes("application/json")
+    router.post("/api/v1/signIn").consumes("application/json")
       .handler(BodyHandler.create())
       .handler(this::FormAuthHandler)
       .handler(this::OTPHandler)
       .handler(this::SignInHandler);  // sign in
+
+    router.get("/api/v1/test").consumes("application/json")
+        .handler(BodyHandler.create())
+        .handler(this::AuthHandler)
+        .handler(this::testHandler);  // sign in
 
 
     vertx.createHttpServer()
@@ -43,10 +48,15 @@ public class MainVerticle extends AbstractVerticle {
 
   private void FormAuthHandler(RoutingContext routingContext) {
     //check JWT token for sign up / log in
-    String token = routingContext.request().getHeader("Authorization");
+    String token ="";
+    try {
+      token = routingContext.request().getHeader("Authorization").split(" ")[1];
+    }catch (Exception e) {
+      routingContext.response().setStatusCode(401).end("Unauthorized");
+    }
 
     // Verify the authentication token.
-    boolean isTokenValid = JwtGenerator.verifyJwtToken(token);
+    boolean isTokenValid = JwtGenerator.verifyJwtToken(token, vertx);
     if(isTokenValid){
       routingContext.next();
     }else{
@@ -54,14 +64,32 @@ public class MainVerticle extends AbstractVerticle {
     }
   }
 
-  private void OTPHandler(RoutingContext routingContext){
+  private void AuthHandler(RoutingContext routingContext){
+    //check JWT token for sign up / log in
+    String token = routingContext.request().getHeader("Authorization").split(" ")[1];
 
+    // Verify the authentication token.
+    boolean isTokenValid = JwtGenerator.verifyAccessToken(token,vertx);
+    if(isTokenValid){
+      routingContext.next();
+    }else{
+      routingContext.response().setStatusCode(401).end("Unauthorized");
+    }
+  }
+
+  private void testHandler(RoutingContext routingContext){
+    routingContext.response().end("test");
+  }
+
+  private void OTPHandler(RoutingContext routingContext){
+    routingContext.next();
   }
 
   private void SignUpHandler(RoutingContext routingContext) {
     //send post request to user service to register new user
     //create access and refresh token
-    vertx.eventBus().request("signUp.handler.addr", "sign up", reply -> {
+    String payload = routingContext.body().asString();
+    vertx.eventBus().request("signUp.handler.addr", payload, reply -> {
       if (reply.succeeded()) {
         routingContext.response().putHeader("Content-type", "application/json").end(reply.result().body().toString());
       } else {
@@ -71,7 +99,8 @@ public class MainVerticle extends AbstractVerticle {
   }
 
   private void SignInHandler(RoutingContext routingContext) {
-    vertx.eventBus().request("signIn.handler.addr", "sign in", reply -> {
+    String payload = routingContext.body().asString();
+    vertx.eventBus().request("signIn.handler.addr", payload, reply -> {
       if (reply.succeeded()) {
         routingContext.response().putHeader("Content-type", "application/json").end(reply.result().body().toString());
       } else {
@@ -80,9 +109,9 @@ public class MainVerticle extends AbstractVerticle {
     });
   }
 
-
-  void AuthHandler(RoutingContext routingContext) {
-    vertx.eventBus().request("login.handler.addr", "authenticate", reply -> {
+  void GAuthHandler(RoutingContext routingContext) {
+    String payload = routingContext.body().asString();
+    vertx.eventBus().request("login.handler.addr", payload, reply -> {
       if (reply.succeeded()) {
         routingContext.response().putHeader("Content-type", "application/json").end(reply.result().body().toString());
       } else {
