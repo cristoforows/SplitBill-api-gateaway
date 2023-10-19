@@ -99,8 +99,7 @@ public class SignInVerticle extends AbstractVerticle {
       checkEmailInDatabase(email, message);
 
       JsonObject responsePayload = prepareResponsePayload(email, name, picture);
-      JwtGenerator jwtGenerator = new JwtGenerator();
-      String jwtToken = jwtGenerator.generateInitialToken(responsePayload, vertx);
+      String jwtToken = JwtGenerator.generateToken(responsePayload, vertx, JwtGenerator.JwtType.INITIAL);
       responsePayload
         .put("picture", picture)
         .put("phone_number", phoneNumber)
@@ -147,9 +146,8 @@ public class SignInVerticle extends AbstractVerticle {
     String name = payloadJson.getString("name");
 
     JsonObject tokenInformation = new JsonObject().put("sub", id).put("email", email).put("name", name);
-    JwtGenerator jwtGenerator = new JwtGenerator();
-    String accessToken = jwtGenerator.generateAccessToken(tokenInformation, vertx);
-    String refreshToken = jwtGenerator.generateRefreshToken(tokenInformation, vertx);
+    String accessToken = JwtGenerator.generateToken(tokenInformation, vertx, JwtGenerator.JwtType.ACCESS);
+    String refreshToken = JwtGenerator.generateToken(tokenInformation, vertx, JwtGenerator.JwtType.REFRESH);
 
     return new JsonObject().put("access_token", accessToken).put("refresh_token", refreshToken);
   }

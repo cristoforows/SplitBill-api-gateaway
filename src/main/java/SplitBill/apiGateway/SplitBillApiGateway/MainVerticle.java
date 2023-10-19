@@ -48,7 +48,7 @@ public class MainVerticle extends AbstractVerticle {
 
   private void FormAuthHandler(RoutingContext routingContext) {
     //check JWT token for sign up / log in
-    String token ="";
+    String token = "";
     try {
       token = routingContext.request().getHeader("Authorization").split(" ")[1];
     }catch (Exception e) {
@@ -56,12 +56,14 @@ public class MainVerticle extends AbstractVerticle {
     }
 
     // Verify the authentication token.
-    boolean isTokenValid = JwtGenerator.verifyJwtToken(token, vertx);
-    if(isTokenValid){
-      routingContext.next();
-    }else{
-      routingContext.response().setStatusCode(401).end("Unauthorized");
-    }
+    JwtGenerator.verifyToken(token, vertx, JwtGenerator.JwtType.INITIAL, isTokenValid -> {
+      if (isTokenValid) {
+        routingContext.next();
+      } else {
+        routingContext.response().setStatusCode(401).end("Unauthorized");
+      }
+    });
+
   }
 
   private void AuthHandler(RoutingContext routingContext){
@@ -69,12 +71,13 @@ public class MainVerticle extends AbstractVerticle {
     String token = routingContext.request().getHeader("Authorization").split(" ")[1];
 
     // Verify the authentication token.
-    boolean isTokenValid = JwtGenerator.verifyAccessToken(token,vertx);
-    if(isTokenValid){
-      routingContext.next();
-    }else{
-      routingContext.response().setStatusCode(401).end("Unauthorized");
-    }
+    JwtGenerator.verifyToken(token,vertx, JwtGenerator.JwtType.ACCESS, isTokenValid -> {
+      if(isTokenValid){
+        routingContext.next();
+      }else{
+        routingContext.response().setStatusCode(401).end("Unauthorized");
+      }
+    });
   }
 
   private void testHandler(RoutingContext routingContext){
@@ -82,6 +85,7 @@ public class MainVerticle extends AbstractVerticle {
   }
 
   private void OTPHandler(RoutingContext routingContext){
+    //send request to OTP service to verify sent otp
     routingContext.next();
   }
 

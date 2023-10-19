@@ -1,5 +1,6 @@
 package SplitBill.apiGateway.utils;
 
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.JWTOptions;
@@ -7,41 +8,31 @@ import io.vertx.ext.auth.PubSecKeyOptions;
 import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.auth.jwt.JWTAuthOptions;
 import java.time.Instant;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 
 public class JwtGenerator {
-  public String generateInitialToken(JsonObject payload, Vertx vertx) {
-    JsonObject response = new JsonObject(payload.toString());
 
-    // Create a JWTAuth object.
-    JWTAuth provider = JWTAuth.create(vertx, new JWTAuthOptions()
-      .addPubSecKey(new PubSecKeyOptions()
-        .setAlgorithm("HS256")
-        .setBuffer("keyboard cat"))); // Set the secret
-
-    // Create expiration time
-    JWTOptions options = new JWTOptions().setExpiresInSeconds(600);
-
-    // Generate the token
-    String token = provider.generateToken(response
-      .put("iss", "Billy-BillManager")
-      .put("sub", "oAuthenticated")
-      .put("iat", Instant.now().getEpochSecond()), options);
-
-    return token;
+  public JwtGenerator() {
   }
 
-  public String generateAccessToken(JsonObject payload, Vertx vertx) {
+  public enum JwtType {
+    INITIAL,
+    ACCESS,
+    REFRESH
+  }
 
+  public static String generateToken(JsonObject payload, Vertx vertx, JwtType type){
+    String secret = useSecret(type);
+    return generateJwt(new JsonObject(payload.toString()), vertx, secret, type);
+  }
+
+  public static String generateJwt(JsonObject payload, Vertx vertx, String secret, JwtType type){
     // Create a JWTAuth object.
-    JWTAuth provider = JWTAuth.create(vertx, new JWTAuthOptions()
-      .addPubSecKey(new PubSecKeyOptions()
-        .setAlgorithm("HS256")
-        .setBuffer("Access Token"))); // Set the secret
+    JWTAuth provider = generateJwtAuth(vertx, secret);
 
     // Create expiration time
-    JWTOptions options = new JWTOptions().setExpiresInSeconds(3600);
+
+    JWTOptions options =setExpirationTime(type);
 
     // Generate the token
     String token = provider.generateToken(payload
@@ -52,75 +43,46 @@ public class JwtGenerator {
     return token;
   }
 
-  public String generateRefreshToken(JsonObject payload, Vertx vertx) {
-
-    // Create a JWTAuth object.
-    JWTAuth provider = JWTAuth.create(vertx, new JWTAuthOptions()
-      .addPubSecKey(new PubSecKeyOptions()
-        .setAlgorithm("HS256")
-        .setBuffer("Refresh Token"))); // Set the secret
-
-    // Generate the token
-    String token = provider.generateToken(payload
-      .put("iss", "Billy-BillManager")
-      .put("sub", "oAuthenticated")
-      .put("iat", Instant.now().getEpochSecond()));
-
-    return token;
+  public static JWTOptions setExpirationTime(JwtType type){
+    switch (type) {
+      case INITIAL:
+        return new JWTOptions().setExpiresInSeconds(600);
+      case ACCESS:
+        return new JWTOptions().setExpiresInSeconds(3600);
+      default:
+        return new JWTOptions();
+    }
   }
 
+  public static void verifyToken(String token, Vertx vertx, JwtType type, Handler<Boolean> resultHandler) {
+    String secret = useSecret(type);
+    JWTAuth provider = generateJwtAuth(vertx, secret);
 
-  public static boolean verifyJwtToken(String JWTToken, Vertx vertx){
-    AtomicBoolean isJwtTokenValid = new AtomicBoolean(false);
-
-    // Create a JWTAuth object.
-    JWTAuth provider = JWTAuth.create(vertx, new JWTAuthOptions()
-      .addPubSecKey(new PubSecKeyOptions()
-        .setAlgorithm("HS256")
-        .setBuffer("keyboard cat"))); // Set the secret
-
-    // Verify a token
-    provider.authenticate(new JsonObject().put("token", JWTToken), res -> {
-      isJwtTokenValid.set(res.succeeded());
+    provider.authenticate(new JsonObject().put("token", token), res -> {
+      boolean isValid = res.succeeded();
+      resultHandler.handle(isValid);
     });
-
-    return isJwtTokenValid.get();
   }
 
-  public static boolean verifyAccessToken(String JWTToken, Vertx vertx){
-    AtomicBoolean isJwtTokenValid = new AtomicBoolean(false);
+  public static String useSecret(JwtType type){
+    switch (type) {
+      case INITIAL:
+        return "Initial secret";
+      case ACCESS:
+        return "Access token secret";
+      case REFRESH:
+        return "Refresh token secret";
+      default:
+        return "";
+    }
+  }
 
-    // Create a JWTAuth object.
-    JWTAuth provider = JWTAuth.create(vertx, new JWTAuthOptions()
+  public static JWTAuth generateJwtAuth(Vertx vertx, String secret){
+    return JWTAuth.create(vertx, new JWTAuthOptions()
       .addPubSecKey(new PubSecKeyOptions()
         .setAlgorithm("HS256")
-        .setBuffer("Access Token"))); // Set the secret
-
-    // Verify a token
-    provider.authenticate(new JsonObject().put("token", JWTToken), res -> {
-      isJwtTokenValid.set(res.succeeded());
-    });
-
-    return isJwtTokenValid.get();
+        .setBuffer(secret)));
   }
 
-  public static boolean verifyRefreshToken(String JWTToken){
-    Vertx vertx = Vertx.vertx();
-    AtomicBoolean isJwtTokenValid = new AtomicBoolean(false);
-
-    // Create a JWTAuth object.
-    JWTAuth provider = JWTAuth.create(vertx, new JWTAuthOptions()
-      .addPubSecKey(new PubSecKeyOptions()
-        .setAlgorithm("HS256")
-        .setBuffer("Refresh Token"))); // Set the secret
-
-    // Verify a token
-    provider.authenticate(new JsonObject().put("token", JWTToken), res -> {
-      isJwtTokenValid.set(res.succeeded());
-    });
-    vertx.close();
-
-    return isJwtTokenValid.get();
-  }
 
 }
