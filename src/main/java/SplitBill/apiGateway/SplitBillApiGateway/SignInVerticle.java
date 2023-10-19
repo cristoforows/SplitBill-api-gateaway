@@ -26,8 +26,7 @@ import java.util.Collections;
 
 public class SignInVerticle extends AbstractVerticle {
 
-//  String AndroidClientID = "488800823172-3g6vkc18qc4oh2k4364lp39i0156ealb.apps.googleusercontent.com";
-  String AndroidClientID = "952306443252-qku76jg3ivp04acnnh5ra4v2ojbgoo77.apps.googleusercontent.com";
+  String AndroidClientID = "488800823172-3g6vkc18qc4oh2k4364lp39i0156ealb.apps.googleusercontent.com";
 
   String IOSClientID = "488800823172-db5uh8fjq74gsb88mbcj7q3kmiifbsr6.apps.googleusercontent.com";
 
@@ -44,103 +43,103 @@ public class SignInVerticle extends AbstractVerticle {
   }
 
 
-    // initial sign in
-    private void handleLoginRequest(io.vertx.core.eventbus.Message<Object> message) {
-      //help to modify the code to accept json object
+  // initial sign in
+  private void handleLoginRequest(io.vertx.core.eventbus.Message<Object> message) {
+    //help to modify the code to accept json object
 
-      JsonObject payload = new JsonObject(message.body().toString());
-      String email;
-      String name;
-      String picture;
+    JsonObject payload = new JsonObject(message.body().toString());
+    String email;
+    String name;
+    String picture;
 
-      //check if access token is valid
-      String idTokenString = payload.getString("idToken");
-      String platformOS = payload.getString("platformOS");
+    //check if access token is valid
+    String idTokenString = payload.getString("idToken");
+    String platformOS = payload.getString("platformOS");
 
-      String clientID = getClientIDByPlatform(platformOS);
-      if (clientID == null) {
-        message.fail(400, "PlatformOS is not valid");
-        return;
-      }
-
-      // Create an HttpTransport instance
-      HttpTransport httpTransport;
-      try {
-        httpTransport = GoogleNetHttpTransport.newTrustedTransport();
-      } catch (GeneralSecurityException | IOException e) {
-        message.fail(500, "Internal Server Error");
-        throw new RuntimeException(e);
-      }
-
-      JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
-      GooglePublicKeysManager publicKeysManager = new GooglePublicKeysManager(httpTransport, jsonFactory);
-      GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(publicKeysManager)
-        .setAudience(Collections.singletonList(clientID))
-        .build();
-      GoogleIdToken idToken;
-
-      try {
-        idToken = verifier.verify(idTokenString);
-        Payload idTokenPayload = idToken.getPayload();
-
-        // Get profile information from payload
-        email = idTokenPayload.getEmail();
-        name = (String) idTokenPayload.get("name");
-        picture = (String) idTokenPayload.get("picture");
-      } catch (GeneralSecurityException | IOException | RuntimeException e) {
-        message.fail(401, "Invalid ID token.");
-        throw new RuntimeException(e);
-      }
-
-
-      //check if email is in the database
-      //do post request to the user service to check if email is in the database
-      //send get request to user service to check if email is in the database
-      checkEmailInDatabase(email, message);
-
-      JsonObject responsePayload = prepareResponsePayload(email, name, picture);
-      String jwtToken = JwtGenerator.generateToken(responsePayload, vertx, JwtGenerator.JwtType.INITIAL);
-      responsePayload
-        .put("picture", picture)
-        .put("phone_number", phoneNumber)
-        .put("token", jwtToken);
-
-      message.reply(responsePayload);
+    String clientID = getClientIDByPlatform(platformOS);
+    if (clientID == null) {
+      message.fail(400, "PlatformOS is not valid");
+      return;
     }
 
-    //sign up
-    private void handleSignUpRequest(io.vertx.core.eventbus.Message<Object> message) {
-      //forward to user service
-      System.out.println(message.body().toString());
-      WebClient client = WebClient.create(vertx);
-      client
-        .post(8080, "billManager.com", "/signUp")
-        .sendJsonObject(new JsonObject(message.body().toString()))
-        .onSuccess(response -> {
-          if (response.statusCode() == 200) {
-            System.out.println("here");
-            JsonObject payloadJson = response.bodyAsJsonObject();
-
-            message.reply(prepareToken(payloadJson));
-          } else {
-            message.fail(response.statusCode(), response.bodyAsString());
-          }
-        });
+    // Create an HttpTransport instance
+    HttpTransport httpTransport;
+    try {
+      httpTransport = GoogleNetHttpTransport.newTrustedTransport();
+    } catch (GeneralSecurityException | IOException e) {
+      message.fail(500, "Internal Server Error");
+      throw new RuntimeException(e);
     }
 
-    //sign in
-    private void handleSignInRequest(io.vertx.core.eventbus.Message<Object> message) {
-      //extract payload from jwtToken
-      String jwtToken = message.headers().get("Authorization").split(" ")[0];
-      Base64.Decoder decoder = Base64.getUrlDecoder();
-      String jwtTokenPayload = Arrays.toString((decoder.decode(jwtToken.split("\\.")[1])));
-      JsonObject payloadJson = new JsonObject(jwtTokenPayload);
+    JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
+    GooglePublicKeysManager publicKeysManager = new GooglePublicKeysManager(httpTransport, jsonFactory);
+    GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(publicKeysManager)
+      .setAudience(Collections.singletonList(clientID))
+      .build();
+    GoogleIdToken idToken;
 
-      message.reply(prepareToken(payloadJson));
+    try {
+      idToken = verifier.verify(idTokenString);
+      Payload idTokenPayload = idToken.getPayload();
+
+      // Get profile information from payload
+      email = idTokenPayload.getEmail();
+      name = (String) idTokenPayload.get("name");
+      picture = (String) idTokenPayload.get("picture");
+    } catch (GeneralSecurityException | IOException | RuntimeException e) {
+      message.fail(401, "Invalid ID token.");
+      throw new RuntimeException(e);
     }
 
 
-    private JsonObject prepareToken(JsonObject payloadJson){
+    //check if email is in the database
+    //do post request to the user service to check if email is in the database
+    //send get request to user service to check if email is in the database
+    checkEmailInDatabase(email, message);
+
+    JsonObject responsePayload = prepareResponsePayload(email, name, picture);
+    String jwtToken = JwtGenerator.generateToken(responsePayload, vertx, JwtGenerator.JwtType.INITIAL);
+    responsePayload
+      .put("picture", picture)
+      .put("phone_number", phoneNumber)
+      .put("token", jwtToken);
+
+    message.reply(responsePayload);
+  }
+
+  //sign up
+  private void handleSignUpRequest(io.vertx.core.eventbus.Message<Object> message) {
+    //forward to user service
+    System.out.println(message.body().toString());
+    WebClient client = WebClient.create(vertx);
+    client
+      .post(8080, "billManager.com", "/signUp")
+      .sendJsonObject(new JsonObject(message.body().toString()))
+      .onSuccess(response -> {
+        if (response.statusCode() == 200) {
+          System.out.println("here");
+          JsonObject payloadJson = response.bodyAsJsonObject();
+
+          message.reply(prepareToken(payloadJson));
+        } else {
+          message.fail(response.statusCode(), response.bodyAsString());
+        }
+      });
+  }
+
+  //sign in
+  private void handleSignInRequest(io.vertx.core.eventbus.Message<Object> message) {
+    //extract payload from jwtToken
+    String jwtToken = message.headers().get("Authorization").split(" ")[0];
+    Base64.Decoder decoder = Base64.getUrlDecoder();
+    String jwtTokenPayload = Arrays.toString((decoder.decode(jwtToken.split("\\.")[1])));
+    JsonObject payloadJson = new JsonObject(jwtTokenPayload);
+
+    message.reply(prepareToken(payloadJson));
+  }
+
+
+  private JsonObject prepareToken(JsonObject payloadJson) {
     String id = payloadJson.getString("sub");
     String email = payloadJson.getString("email");
     String name = payloadJson.getString("name");

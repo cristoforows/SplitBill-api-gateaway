@@ -31,9 +31,9 @@ public class MainVerticle extends AbstractVerticle {
       .handler(this::SignInHandler);  // sign in
 
     router.get("/api/v1/test").consumes("application/json")
-        .handler(BodyHandler.create())
-        .handler(this::AuthHandler)
-        .handler(this::testHandler);  // sign in
+      .handler(BodyHandler.create())
+      .handler(this::AuthHandler)
+      .handler(this::testHandler);  // sign in
 
 
     vertx.createHttpServer()
@@ -51,7 +51,7 @@ public class MainVerticle extends AbstractVerticle {
     String token = "";
     try {
       token = routingContext.request().getHeader("Authorization").split(" ")[1];
-    }catch (Exception e) {
+    } catch (Exception e) {
       routingContext.response().setStatusCode(401).end("Unauthorized");
     }
 
@@ -66,25 +66,25 @@ public class MainVerticle extends AbstractVerticle {
 
   }
 
-  private void AuthHandler(RoutingContext routingContext){
+  private void AuthHandler(RoutingContext routingContext) {
     //check JWT token for sign up / log in
     String token = routingContext.request().getHeader("Authorization").split(" ")[1];
 
     // Verify the authentication token.
-    JwtGenerator.verifyToken(token,vertx, JwtGenerator.JwtType.ACCESS, isTokenValid -> {
-      if(isTokenValid){
+    JwtGenerator.verifyToken(token, vertx, JwtGenerator.JwtType.ACCESS, isTokenValid -> {
+      if (isTokenValid) {
         routingContext.next();
-      }else{
+      } else {
         routingContext.response().setStatusCode(401).end("Unauthorized");
       }
     });
   }
 
-  private void testHandler(RoutingContext routingContext){
+  private void testHandler(RoutingContext routingContext) {
     routingContext.response().end("test");
   }
 
-  private void OTPHandler(RoutingContext routingContext){
+  private void OTPHandler(RoutingContext routingContext) {
     //send request to OTP service to verify sent otp
     routingContext.next();
   }

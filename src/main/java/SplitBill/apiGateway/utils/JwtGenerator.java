@@ -7,6 +7,7 @@ import io.vertx.ext.auth.JWTOptions;
 import io.vertx.ext.auth.PubSecKeyOptions;
 import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.auth.jwt.JWTAuthOptions;
+
 import java.time.Instant;
 
 
@@ -21,18 +22,18 @@ public class JwtGenerator {
     REFRESH
   }
 
-  public static String generateToken(JsonObject payload, Vertx vertx, JwtType type){
+  public static String generateToken(JsonObject payload, Vertx vertx, JwtType type) {
     String secret = useSecret(type);
     return generateJwt(new JsonObject(payload.toString()), vertx, secret, type);
   }
 
-  public static String generateJwt(JsonObject payload, Vertx vertx, String secret, JwtType type){
+  public static String generateJwt(JsonObject payload, Vertx vertx, String secret, JwtType type) {
     // Create a JWTAuth object.
     JWTAuth provider = generateJwtAuth(vertx, secret);
 
     // Create expiration time
 
-    JWTOptions options =setExpirationTime(type);
+    JWTOptions options = setExpirationTime(type);
 
     // Generate the token
     String token = provider.generateToken(payload
@@ -43,7 +44,7 @@ public class JwtGenerator {
     return token;
   }
 
-  public static JWTOptions setExpirationTime(JwtType type){
+  public static JWTOptions setExpirationTime(JwtType type) {
     switch (type) {
       case INITIAL:
         return new JWTOptions().setExpiresInSeconds(600);
@@ -64,7 +65,7 @@ public class JwtGenerator {
     });
   }
 
-  public static String useSecret(JwtType type){
+  public static String useSecret(JwtType type) {
     switch (type) {
       case INITIAL:
         return "Initial secret";
@@ -77,12 +78,11 @@ public class JwtGenerator {
     }
   }
 
-  public static JWTAuth generateJwtAuth(Vertx vertx, String secret){
+  public static JWTAuth generateJwtAuth(Vertx vertx, String secret) {
     return JWTAuth.create(vertx, new JWTAuthOptions()
       .addPubSecKey(new PubSecKeyOptions()
         .setAlgorithm("HS256")
         .setBuffer(secret)));
   }
-
 
 }
