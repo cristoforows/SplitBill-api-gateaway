@@ -11,6 +11,7 @@ public class MainVerticle extends AbstractVerticle {
   @Override
   public void start() {
     vertx.deployVerticle(new SignInVerticle());
+    vertx.deployVerticle(new OCRVerticle());
     // Create a Router
     Router router = Router.router(vertx);
 
@@ -30,10 +31,15 @@ public class MainVerticle extends AbstractVerticle {
       .handler(this::OTPHandler)
       .handler(this::SignInHandler);  // sign in
 
+    router.post("/api/v1/scanner").consumes("application/json")
+      .handler(BodyHandler.create())
+
+      .handler(this::ScannerHandler);  // scan receipt
+
     router.get("/api/v1/test").consumes("application/json")
       .handler(BodyHandler.create())
       .handler(this::AuthHandler)
-      .handler(this::testHandler);  // sign in
+      .handler(this::testHandler);
 
 
     vertx.createHttpServer()
@@ -44,6 +50,18 @@ public class MainVerticle extends AbstractVerticle {
           "HTTP server started on port " + server.actualPort()
         )
       );
+  }
+
+  private void ScannerHandler(RoutingContext routingContext) {
+    //send request to OCR service to scan receipt
+    String payload = routingContext.body().asString();
+    vertx.eventBus().request("scanner.handler.addr", payload, reply -> {
+      if (reply.succeeded()) {
+        routingContext.response().putHeader("Content-type", "application/json").end(reply.result().body().toString());
+      } else {
+        routingContext.response().end(reply.cause().toString());
+      }
+    });
   }
 
   private void FormAuthHandler(RoutingContext routingContext) {
@@ -97,7 +115,7 @@ public class MainVerticle extends AbstractVerticle {
       if (reply.succeeded()) {
         routingContext.response().putHeader("Content-type", "application/json").end(reply.result().body().toString());
       } else {
-        routingContext.response().end("User exists");
+        routingContext.response().setStatusCode(401).end("Unauthorized");
       }
     });
   }
@@ -108,7 +126,7 @@ public class MainVerticle extends AbstractVerticle {
       if (reply.succeeded()) {
         routingContext.response().putHeader("Content-type", "application/json").end(reply.result().body().toString());
       } else {
-        routingContext.response().end("User exists");
+        routingContext.response().setStatusCode(401).end("Unauthorized");
       }
     });
   }

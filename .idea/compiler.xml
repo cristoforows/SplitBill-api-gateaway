@@ -9,5 +9,8 @@
         <module name="SplitBillApiGateway" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="SplitBillApiGateaway" target="11" />
+    </bytecodeTargetLevel>
   </component>
 </project>
