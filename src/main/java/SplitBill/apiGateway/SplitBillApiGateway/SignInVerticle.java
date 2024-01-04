@@ -117,7 +117,6 @@ public class SignInVerticle extends AbstractVerticle {
       .sendJsonObject(new JsonObject(message.body().toString()))
       .onSuccess(response -> {
         if (response.statusCode() == 200) {
-          System.out.println("here");
           JsonObject payloadJson = response.bodyAsJsonObject();
 
           message.reply(prepareToken(payloadJson));
